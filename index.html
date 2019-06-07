@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <meta charset="utf-8">
+  <title>Life Expectancy by Province</title>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+
+</head>
+
+<style>
+
+div.title-text {
+  font: 25px sans-serif;
+  border: 1px solid grey;
+  text-align: center;
+  background-color: lightgreen;
+}
+
+div.tooltip { 
+    position: absolute;     
+    text-align: center;     
+    width: 140px;          
+    height: 85px;         
+    padding: 2px;       
+    font: 15px sans-serif; 
+    color: white;   
+    background: #B9FFD8; 
+    border: 1px solid black;    
+    border-radius: 8px;     
+    pointer-events: none;     
+}
+
+</style>
+
+<body>
+</body>
+<script>
+
+  var pollutiontranslate = {
+    'low': '低',
+    'med-low': '低中',
+    'med': '中',
+    'med-high': '中高',
+    'high': '高'
+  }
+
+  var regiontranslate = {
+    'Beijing': '北京',
+    'Tianjin': '天津',
+    'Hebei': '河北',
+    'Shanxi': '山西',
+    'Inner Mongolia': '内蒙古',
+    'Liaoning': '辽宁',
+    'Jilin': '吉林',
+    'Heilongjiang': '黑龙江',
+    'Shanghai': '上海',
+    'Jiangsu': '江苏',
+    'Zhejiang': '浙江',
+    'Anhui': '安徽',
+    'Fujian': '福建',
+    'Jiangxi': '江西',
+    'Shandong': '山东',
+    'Henan': '河南',
+    'Hubei': '湖北',
+    'Hunan': '湖南',
+    'Guangdong': '广东',
+    'Guangxi': '广西壮族',
+    'Hainan': '海南',
+    'Chongqing': '四川',
+    'Sichuan': '四川',
+    'Guizhou': '贵州',
+    'Yunnan': '云南',
+    'Tibet': '西藏',
+    'Shaanxi': '陕西',
+    'Gansu': '甘肃',
+    'Qinghai': '青海',
+    'Ningxia': '宁夏回族',
+    'Xinjiang': '新疆维吾尔族'
+  }
+
+  // Use the margin convention practice 
+  var margin = {top: 50, right: 50, bottom: 50, left: 50}
+    , width = window.innerWidth - margin.left - margin.right // Use the window's width 
+    , height = window.innerHeight - margin.top - margin.bottom; // Use the window's height
+
+  var xScale = d3.scaleLinear()
+    .domain([0, 130000]) // input
+    .range([0, width]); // output
+
+  var yScale = d3.scaleLinear()
+    .domain([0, 85]) // input 
+    .range([height, 0]); // output
+
+  var colors = ["#ffffd9", "#edf8b1", "#c7e9b4", "#7fcdbb", "#41b6c4", "#1d91c0", "#225ea8", "#253494", "#081d58"];
+
+  var tooltipdiv = d3.select("body").append("div") 
+    .attr("class", "tooltip")       
+    .style("opacity", 0);
+
+  var titlediv = d3.select("body").append("div") 
+    .attr("class", "title-text")       
+    .style("opacity", 0);
+
+  d3.csv('data/lifeexpect.csv').then(function(data) {
+
+    var svg = d3.select('body').append('svg')
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    // create title
+    titlediv.transition()
+            .style('opacity', 0.9)
+            .style("left", width/2 + "px");
+    titlediv.html('请点击圈子。我希望我可以帮一下! 爱, 杰夫')
+
+    // create x axis
+    svg.append('g')
+      .attr('class', 'x axis')
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(xScale));
+
+    svg.append('text')
+      .attr("transform",
+            "translate(" + (width/2) + " ," + 
+                           (height + 40) +  ")")
+      .style("text-anchor", "middle")
+      .text('平均工资 (¥)')
+
+    // create y axis
+    svg.append('g')
+      .attr('class', 'y-axis')
+      .call(d3.axisLeft(yScale));
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 0 - margin.left)
+      .attr("x",0 - (height / 2))
+      .attr("dy", "1em")
+      .style("text-anchor", "middle")
+      .text("寿命");
+
+    var leastPollution = d3.min(data, function(d) { return d.pollution });
+    var mostPollution = d3.max(data, function(d) { return d.pollution });
+
+    var colorScale = d3.scaleLinear()
+      .domain([leastPollution, mostPollution])
+      .range([d3.rgb("#007AFF"), d3.rgb('#ff0000')]);
+
+    var points = svg.selectAll('.dot')
+      .data(data)
+      .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', function(d) { return xScale(d.gdppercapita);})
+        .attr('cy', function (d) { return yScale(d.lifeexpect); })
+        .attr('r', 5)
+        .style('fill', function(d) { return colorScale(d.pollution); })
+        .on("mouseover", function(d) {
+          tooltipdiv.transition()
+            .duration(200)
+            .style('opacity', 0.9);
+          tooltipdiv.html(regiontranslate[d.region] + '<br>' + '寿命: ' + d.lifeexpect + '岁' + '<br>' + '平均工资: ¥' + d.gdppercapita + '<br>' + '污染: ' + pollutiontranslate[d.pollutionlevel])
+            .style("left", (d3.event.pageX) - 145 +  "px")
+            .style("top", (d3.event.pageY - 28) + "px")
+            .style('background', colorScale(d.pollution))
+        })
+        .on('mouseout', function(d) {
+          tooltipdiv.transition()
+            .duration(500)
+            .style('opacity', 0);
+        });
+
+  })
+
+</script>
+</html>
